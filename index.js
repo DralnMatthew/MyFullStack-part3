@@ -11,6 +11,7 @@ app.listen(PORT, () => {
 
 morgan.token('data', req => req.method === 'POST' ? JSON.stringify(req.body) : null)
 
+app.use(express.static('build'))
 app.use(express.json())
 app.use(cors())
 app.use(morgan(function (tokens, req, res) {
