@@ -11,22 +11,12 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
 
-morgan.token('data', req => req.method === 'POST' ? JSON.stringify(req.body) : null)
-
 app.use(express.static('build'))
 app.use(express.json())
 app.use(cors())
-app.use(morgan(function (tokens, req, res) {
-  return [
-    tokens.method(req, res),
-    tokens.url(req, res),
-    tokens.status(req, res),
-    tokens.res(req, res, 'content-length'), '-',
-    tokens['response-time'](req, res), 'ms',
-    tokens.data(req)
-  ].join(' ')
-})
-)
+
+morgan.token('data', (req) => JSON.stringify(req.body))
+app.use(morgan(':method :url :status  :res[content-length] - :response-time ms :data '))
 
 app.get('/', (request, response) => {
   response.send('<h1>Hello World!</h1>')
@@ -47,14 +37,15 @@ app.get('/info', (request, response) => {
 app.get('/api/persons/:id', (request, response,next) => {
   Person.findById(request.params.id)
     .then(person => {
-      response.json(person)
+      if (person) response.json(person)
+      else response.status(404).end()
     })
     .catch(error => next(error))
 })
 
 app.delete('/api/persons/:id', (request, response,next) => {
   Person.findByIdAndRemove(request.params.id)
-    .then(result =>{
+    .then(result => {
       response.status(204).end()
     })
     .catch(error => next(error))
@@ -63,19 +54,15 @@ app.delete('/api/persons/:id', (request, response,next) => {
 
 app.post('/api/persons', (request, response,next) => {
   const body = request.body
-  if (!body.name || !body.number) {
-    return response.status(404).json({
-      error: 'content missing'
-    })
-  }
+
   const person = new Person({
     name: body.name,
     number: body.number
   })
 
   person.save()
-    .then(person => {
-      response.json(person)
+    .then(toSavePerson => {
+      response.json(toSavePerson)
     })
     .catch(error => next(error))
 })
@@ -109,4 +96,3 @@ const errorHandler = (error, request, response, next) => {
   next(error)
 }
 app.use(errorHandler)
-
